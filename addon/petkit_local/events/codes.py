@@ -206,6 +206,11 @@ One row per code, carrying everything known about it — which is what
     firmware: str = ""
     families: frozenset[str] = field(default=ANY_DEVICE)
     note: str = ""
+    #: The name HA's `event` entity knows this code by -- what the same event
+    #: is called on MQTT (`feed_over/post` -> `feed_over`). An HTTP report only
+    #: carries the number, and HA accepts only the names an entity declared.
+    #: "" where no MQTT twin has been matched.
+    ha_event: str = ""
     #: For an event whose CONTENT cannot say which way it went. Holds
     #: `(state key, label when present, label when absent)`: the device state
     #: attached to the report is consulted instead. Code 17 is the case this
@@ -434,7 +439,7 @@ UNKNOWN_HTTP_CODES = frozenset({"12", "19", "22", "23"})
 #: pet_event, err_start, err_over, relay_start, relay_over, relay_response.
 FEEDER_HTTP_CODES: dict[str, EventCode] = {
     "2": EventCode(
-        kind=KIND_FEEDING, label="Feeding done", anchor=True, role=ROLE_DONE,
+        kind=KIND_FEEDING, ha_event="feed_over", label="Feeding done", anchor=True, role=ROLE_DONE,
         done_word="feeding", firmware="pk_event_pack_feed_over_event_msg (a0=2)",
         families=FEEDER,
         note="The collision that proves these codes are per-category: 2 is "
@@ -442,7 +447,7 @@ FEEDER_HTTP_CODES: dict[str, EventCode] = {
              "{id, day, manual, time, online_state, eat_video, state}.",
     ),
     "3": EventCode(
-        kind=KIND_FEEDING, label="Feeding started", detail=True,
+        kind=KIND_FEEDING, ha_event="feed_start", label="Feeding started", detail=True,
         role=ROLE_START, families=FEEDER,
         note="Confirmed on a live D4SH (fw 248, HTTP). Content "
              "{id, day, manual, time, online_state} matches MQTT "
@@ -450,7 +455,7 @@ FEEDER_HTTP_CODES: dict[str, EventCode] = {
              "state.feeding is 1 or 2 while the motor runs.",
     ),
     "4": EventCode(
-        kind=KIND_FEEDING, label="Feeding done", anchor=True,
+        kind=KIND_FEEDING, ha_event="feed_over", label="Feeding done", anchor=True,
         role=ROLE_DONE, done_word="feeding", families=FEEDER,
         note="Confirmed on a live D4SH (fw 248, HTTP). Content "
              "{mark, start_time, id, day, manual, time, real_amount1, "

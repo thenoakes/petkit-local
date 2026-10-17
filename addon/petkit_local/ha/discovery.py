@@ -245,7 +245,11 @@ def build_discovery_payload(
         # the bridge fires {"event_type": ...} when the device reports an event.
         payload["state_topic"] = f"petkit-local/{device_id}/event/{entity.unique_id_suffix}"
         payload["event_types"] = entity.options
-        payload["value_template"] = "{{ value_json.event_type }}"
+        # No value_template: HA's MQTT event platform parses the payload as a
+        # JSON OBJECT and reads `event_type` out of it itself. A template
+        # rendering just the name hands it a bare value, and every event was
+        # dropped with "Expected JSON to be parsed as a dict".
+        payload.pop("value_template", None)
 
     elif entity.component == "image":
         # Raw (non-base64) image bytes retained on `image_topic` — no

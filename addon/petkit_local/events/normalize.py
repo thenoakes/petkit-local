@@ -384,6 +384,13 @@ def entity_for_event(event_type: str, device_type: str | None = None) -> str | N
     return KIND_TO_ENTITY.get(code.kind) if code else None
 
 
+def ha_event_name(event_type: str, device_type: str | None = None) -> str:
+    """What to fire that entity with: the code's MQTT-side name where one is
+    known (`codes.EventCode.ha_event`), otherwise `event_type` unchanged."""
+    code = codes.lookup(event_type, device_type)
+    return (code.ha_event if code else "") or event_type
+
+
 #: Transport envelope, not telemetry. Every MQTT `params` carries these
 #: alongside the device's actual readings -- confirmed on a live T5, where 186
 #: of 186 `property` posts included `XDevice`.

@@ -25,6 +25,7 @@ from petkit_local.events.normalize import (CATEGORY_CLOUD_DOUBLE, CATEGORY_HEALT
                                            classify_event_kind, cleaning_label,
                                            entity_for_event, event_type_label,
                                            from_event_report, from_file_info, from_mqtt,
+                                           ha_event_name,
                                            is_detail_event, parse_event_report_form,
                                            telemetry_only)
 from petkit_local.events.sessions import (CYCLE_TAIL_WINDOW_SEC, SUB_EVENT_WINDOW_SEC,
@@ -64,6 +65,7 @@ __all__ = [
     "filter_counts",
     "from_event_report",
     "from_file_info",
+    "ha_event_name",
     "from_mqtt",
     "group_sessions",
     "is_detail_event",
