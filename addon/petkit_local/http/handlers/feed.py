@@ -20,6 +20,10 @@ Everything below matches 21 real cloud responses captured from a D4SH on
 * ``nextTick`` is the countdown of the LAST ``latest`` entry — re-poll when
   the final listed feed has fired — and the constant 86340 when ``latest`` is
   empty (all five empty-schedule captures), i.e. try again in about a day.
+
+A single-amount feeder (`const.DEVICE_TYPES_FEEDER_SINGLE_AMOUNT`, the D4) gets
+the same shape with each meal's amount keyed ``a`` instead of ``a1``/``a2`` —
+see `wire_amounts`. What is stored stays ``a1``/``a2`` for every model.
 """
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ import time
 from aiohttp import web
 
 from petkit_local.http.handlers._common import request_device
+from petkit_local.utils.const import DEVICE_TYPES_FEEDER_SINGLE_AMOUNT
 
 #: What the cloud returns for ``nextTick`` when ``latest`` is empty — the
 #: constant 86340 (23h59m) in every such capture, never a computed value.
@@ -148,6 +153,38 @@ def _compute_next_tick(latest: list[dict]) -> int:
     return max(entry["t"] for entry in latest)
 
 
+def wire_amounts(entries: list[dict], device_type: str) -> list[dict]:
+    """Meals or ``latest`` entries keyed the way ``device_type`` reads them.
+
+    A D4SH reads ``a1``/``a2``; a single-amount feeder reads ``a`` alone and
+    never looks at the other two, so it is handed ``a1`` as ``a`` and nothing
+    else. Returns new dicts: the stored schedule is never rewritten.
+    """
+    if device_type.lower() not in DEVICE_TYPES_FEEDER_SINGLE_AMOUNT:
+        return entries
+    out = []
+    for entry in entries:
+        rekeyed = {k: v for k, v in entry.items() if k not in ("a1", "a2")}
+        rekeyed["a"] = entry.get("a1", 0)
+        out.append(rekeyed)
+    return out
+
+
+def wire_groups(groups: list[dict], device_type: str, *,
+                item_json: bool = True) -> list[dict]:
+    """Schedule groups for the wire: meals through `wire_amounts`, and the
+    ``itemJsonString`` rebuilt from them (``item_json=False`` leaves it out,
+    as the property.set push does)."""
+    out = []
+    for group in groups:
+        g = {"re": group.get("re", ""),
+             "it": wire_amounts(group.get("it") or [], device_type)}
+        if item_json:
+            g["itemJsonString"] = json.dumps(g["it"], **_ITEM_JSON)
+        out.append(g)
+    return out
+
+
 async def handle_feed_get(request: web.Request) -> web.Response:
     """Return the device's stored feeding schedule with live countdowns.
 
@@ -180,6 +217,16 @@ async def handle_feed_get(request: web.Request) -> web.Response:
     for group in feed.get("schedule", []):
         if "it" in group:
             group["itemJsonString"] = json.dumps(group["it"], **_ITEM_JSON)
+
+    if device.device_type.lower() in DEVICE_TYPES_FEEDER_SINGLE_AMOUNT:
+        return web.json_response({
+            "result": {
+                "schedule": wire_groups(feed.get("schedule") or [], device.device_type)
+                or [_EMPTY_GROUP],
+                "nextTick": next_tick,
+                "latest": wire_amounts(latest, device.device_type),
+            }
+        })
 
     return web.json_response({
         "result": {

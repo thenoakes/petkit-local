@@ -31,6 +31,8 @@ from petkit_local.utils.coerce import to_bool, to_float, to_int
 from petkit_local.utils.const import DEVICE_TYPES_FEEDER_DUAL, DEVICE_TYPES_FEEDER_NEXT_GEN
 from petkit_local.http.handlers.feed import _build_latest as _feed_latest
 from petkit_local.http.handlers.feed import _compute_next_tick as _feed_next_tick
+from petkit_local.http.handlers.feed import wire_amounts as _feed_wire_amounts
+from petkit_local.http.handlers.feed import wire_groups as _feed_wire_groups
 from petkit_local.utils.timeutil import local_day_start
 
 log = logging.getLogger(__name__)
@@ -562,12 +564,11 @@ def handle_ha_command(device: Device, entity: EntityDef, payload: str) -> Comman
                                          "payload": {"feed_get": "1"},
                                          "timestamp": int(time.time())})
             latest = _feed_latest(parsed, time.time())
-            wire_groups = [{"re": g.get("re", ""), "it": g.get("it", [])}
-                           for g in parsed.get("schedule", [])]
             wire = {
-                "schedule": wire_groups,
+                "schedule": _feed_wire_groups(parsed.get("schedule", []),
+                                              device.device_type, item_json=False),
                 "nextTick": _feed_next_tick(latest),
-                "latest": latest,
+                "latest": _feed_wire_amounts(latest, device.device_type),
             }
             return (PROPERTY_SET_SUFFIX, make_mqtt_property_set(
                 {"feed": json.dumps(wire, separators=(",", ":"))}))

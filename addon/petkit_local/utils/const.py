@@ -50,6 +50,16 @@ DEVICE_TYPES_FEEDER_DUAL = {"d4sh"}
 # Feeder Mini) run different firmware entirely, and extending a finding to them
 # would be extrapolation, not evidence.
 DEVICE_TYPES_FEEDER_NEXT_GEN = {"d4h", "d4sh"}
+
+# Feeders whose schedule meals carry ONE amount, keyed `a`, where the D4SH's
+# carry `a1`/`a2`. Same `schedule[].it[]` / `latest[]` shape otherwise.
+#
+# Seen on a D4 (fw 1.255, issue #3): served `a1`, it fetched every schedule and
+# fired none of its meals. dwyschka/localkit runs D4s against live captures and
+# keys their meals `a` (`FreshElementSolo` declares FEEDER_COUNT = 1, "only
+# 'a', never 'a1'/'a2'"); its notes say D4/D4H/D3 are all single-hopper at the
+# wire level. Only the D4 is listed because it is the model seen here.
+DEVICE_TYPES_FEEDER_SINGLE_AMOUNT = {"d4"}
 DEVICE_TYPES_WATER_FOUNTAIN = {"w4", "w5", "ctw2", "ctw3", "w7h"}
 DEVICE_TYPES_PURIFIER = {"k2", "k3"}
 DEVICE_TYPES_ALL = DEVICE_TYPES_LITTER | DEVICE_TYPES_FEEDER | DEVICE_TYPES_WATER_FOUNTAIN | DEVICE_TYPES_PURIFIER

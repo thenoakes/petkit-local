@@ -243,3 +243,59 @@ def test_seconds_schedule_without_stamp_is_left_alone():
     assert migrate_minute_schedule(feed) is False
     assert feed["schedule"][0]["it"][0]["t"] == 46560
     assert feed["v"] == 2
+
+
+# --- D4: one amount, keyed `a` ----------------------------------------------
+# A D4 (fw 1.255) served `a1` fetched every schedule and fired none of its
+# meals (issue #3); dwyschka/localkit keys a D4's meals `a`.
+
+async def _get_d4_feed(client):
+    r = await client.get("/6/d4/dev_feed_get",
+                         headers={"X-Device": "id=1&nonce=x&timestamp=1&type=D4&sign=x"})
+    return (await r.json())["result"]
+
+
+async def test_d4_meals_and_latest_carry_a_not_a1_a2():
+    app, reg = _app("d4")
+    d = reg.get(1)
+    now = time.time()
+    lt = time.localtime(now)
+    future_t = (lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec + 7200) % 86400
+    d.config["feed_schedule"] = {
+        "schedule": [{"re": "1,2,3,4,5,6,7", "it": [
+            {"id": f"n_{future_t}", "t": future_t, "a1": 10, "a2": 0},
+        ]}],
+        "v": 2,
+    }
+    async with TestClient(TestServer(app)) as c:
+        result = await _get_d4_feed(c)
+    meal = result["schedule"][0]["it"][0]
+    assert meal == {"id": f"n_{future_t}", "t": future_t, "a": 10}
+    assert result["schedule"][0]["itemJsonString"] == json.dumps(
+        [meal], separators=(",", ":"), sort_keys=True)
+    entry = result["latest"][0]
+    assert set(entry) == {"id", "t", "a"} and entry["a"] == 10
+    assert entry["id"].startswith("s_")
+    assert result["nextTick"] == max(e["t"] for e in result["latest"])
+    # What is stored is untouched: still a1/a2, for the panel and every model.
+    assert d.config["feed_schedule"]["schedule"][0]["it"][0]["a1"] == 10
+
+
+async def test_d4_with_no_schedule_gets_the_empty_group():
+    app, reg = _app("d4")
+    async with TestClient(TestServer(app)) as c:
+        result = await _get_d4_feed(c)
+    assert result["schedule"] == [
+        {"re": "1,2,3,4,5,6,7", "it": [], "itemJsonString": "[]"}]
+    assert result["nextTick"] == 86340 and result["latest"] == []
+
+
+async def test_d4sh_keeps_a1_a2():
+    app, reg = _app("d4sh")
+    reg.get(1).config["feed_schedule"] = {
+        "schedule": [{"re": "5", "it": [{"id": "n_46560", "t": 46560, "a1": 1, "a2": 2}]}],
+        "v": 2,
+    }
+    async with TestClient(TestServer(app)) as c:
+        result = await _get_feed(c)
+    assert result["schedule"][0]["it"][0] == {"id": "n_46560", "t": 46560, "a1": 1, "a2": 2}

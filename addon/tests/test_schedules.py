@@ -394,6 +394,26 @@ async def test_a_feeding_schedule_is_stored_and_pushed():
         await c.close()
 
 
+async def test_a_d4_schedule_is_pushed_with_its_amount_keyed_a():
+    """A D4 reads one amount, `a`; the property.set{feed} push is keyed the
+    same way as its dev_feed_get, while what is stored keeps a1/a2."""
+    app, reg, bridge = _panel("d4")
+    c = await _client(app)
+    try:
+        payload = {"schedule": [{"re": "1,2,3,4,5,6,7",
+                                 "it": [{"t": 55740, "a1": 10, "a2": 0}]}]}
+        status, _ = await _save(c, "feed_schedule", payload)
+        assert status == 200
+        assert reg.get(1).config["feed_schedule"]["schedule"][0]["it"][0]["a1"] == 10
+        _did, suffix, envelope = bridge.sent[0]
+        assert suffix == "property/set"
+        wire = json.loads(envelope["params"]["feed"])
+        assert wire["schedule"][0]["it"] == [{"id": "n_55740", "t": 55740, "a": 10}]
+        assert all("a1" not in e and e["a"] == 10 for e in wire["latest"])
+    finally:
+        await c.close()
+
+
 async def test_a_meal_id_is_regenerated_when_not_a_string():
     """The firmware reads `id` with cJSON_GetStringValue — an int id is a NULL
     pointer and a crash. Anything that is not a non-empty string comes back as
