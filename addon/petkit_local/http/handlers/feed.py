@@ -24,6 +24,11 @@ Everything below matches 21 real cloud responses captured from a D4SH on
 A single-amount feeder (`const.DEVICE_TYPES_FEEDER_SINGLE_AMOUNT`, the D4) gets
 the same shape with each meal's amount keyed ``a`` instead of ``a1``/``a2`` —
 see `wire_amounts`. What is stored stays ``a1``/``a2`` for every model.
+
+A D4 also runs its meals against UTC time of day
+(`const.DEVICE_TYPES_FEEDER_UTC_SCHEDULE`), so its meal times — and, where that
+crosses midnight, their weekdays — are converted to UTC on the wire. What is
+stored stays local.
 """
 from __future__ import annotations
 
@@ -33,7 +38,9 @@ import time
 from aiohttp import web
 
 from petkit_local.http.handlers._common import request_device
-from petkit_local.utils.const import DEVICE_TYPES_FEEDER_SINGLE_AMOUNT
+from petkit_local.utils.const import (
+    DEVICE_TYPES_FEEDER_SINGLE_AMOUNT, DEVICE_TYPES_FEEDER_UTC_SCHEDULE,
+)
 
 #: What the cloud returns for ``nextTick`` when ``latest`` is empty — the
 #: constant 86340 (23h59m) in every such capture, never a computed value.
@@ -170,11 +177,60 @@ def wire_amounts(entries: list[dict], device_type: str) -> list[dict]:
     return out
 
 
+_DAY = 24 * 60 * 60
+
+
+def _shift_days(re: str, shift: int) -> str:
+    """A PetKit weekday mask (Sunday=1 .. Saturday=7) moved ``shift`` days,
+    wrapping Saturday into Sunday and back."""
+    days = sorted({(int(p) - 1 + shift) % 7 + 1
+                   for p in str(re).split(",") if p.strip().isdigit()
+                   and 1 <= int(p) <= 7})
+    return ",".join(str(d) for d in days)
+
+
+def _to_utc(groups: list[dict], utc_offset: int) -> list[dict]:
+    """Meal times moved from local to UTC seconds of day.
+
+    A meal that crosses midnight in the move lands on the neighbouring
+    weekday, so a group whose meals fall either side of it is split into one
+    group per weekday shift. Ids follow ``t`` (``n_<seconds>``), as the cloud's
+    do.
+    """
+    out = []
+    for group in groups:
+        meals = group.get("it") or []
+        if not meals:
+            out.append(dict(group))
+            continue
+        by_shift: dict[int, list[dict]] = {}
+        for meal in meals:
+            t = meal.get("t", 0) - utc_offset
+            shift = -1 if t < 0 else 1 if t >= _DAY else 0
+            t %= _DAY
+            by_shift.setdefault(shift, []).append({**meal, "id": f"n_{t}", "t": t})
+        for shift, shifted in sorted(by_shift.items()):
+            out.append({**group, "re": _shift_days(group.get("re", ""), shift),
+                        "it": shifted})
+    return out
+
+
 def wire_groups(groups: list[dict], device_type: str, *,
-                item_json: bool = True) -> list[dict]:
+                item_json: bool = True, utc_offset: int | None = None) -> list[dict]:
     """Schedule groups for the wire: meals through `wire_amounts`, and the
     ``itemJsonString`` rebuilt from them (``item_json=False`` leaves it out,
-    as the property.set push does)."""
+    as the property.set push does).
+
+    For a feeder that runs meals on UTC, times are converted first, using
+    ``utc_offset`` seconds east of UTC — by default this host's own offset
+    right now, the same local time every schedule here is entered in. A DST
+    change is therefore picked up at the device's next fetch, which `nextTick`
+    keeps within a day.
+    """
+    if device_type.lower() in DEVICE_TYPES_FEEDER_UTC_SCHEDULE:
+        if utc_offset is None:
+            utc_offset = time.localtime().tm_gmtoff
+        groups = _to_utc(groups, utc_offset)
     out = []
     for group in groups:
         g = {"re": group.get("re", ""),

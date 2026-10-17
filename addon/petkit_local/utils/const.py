@@ -60,6 +60,14 @@ DEVICE_TYPES_FEEDER_NEXT_GEN = {"d4h", "d4sh"}
 # 'a', never 'a1'/'a2'"); its notes say D4/D4H/D3 are all single-hopper at the
 # wire level. Only the D4 is listed because it is the model seen here.
 DEVICE_TYPES_FEEDER_SINGLE_AMOUNT = {"d4"}
+
+# Feeders that run their stored meals against UTC time of day, whatever
+# timezone they were given. Seen on a D4 (fw 1.255): told `timezone: 1.0` at
+# signup and in `dev_device_info`, a meal stored as `t` = 16:48 dispensed at
+# 17:48 BST — 16:48 UTC — and the device's own feed reports carry UTC seconds
+# of day in `time` (60486 for a feed at 17:48:06 BST). Such a feeder is handed
+# its meal times converted to UTC (`http/handlers/feed.py::wire_groups`).
+DEVICE_TYPES_FEEDER_UTC_SCHEDULE = {"d4"}
 DEVICE_TYPES_WATER_FOUNTAIN = {"w4", "w5", "ctw2", "ctw3", "w7h"}
 DEVICE_TYPES_PURIFIER = {"k2", "k3"}
 DEVICE_TYPES_ALL = DEVICE_TYPES_LITTER | DEVICE_TYPES_FEEDER | DEVICE_TYPES_WATER_FOUNTAIN | DEVICE_TYPES_PURIFIER

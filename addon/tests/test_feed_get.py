@@ -13,8 +13,23 @@ from petkit_local.http.handlers.feed import (
     _build_latest,
     _compute_next_tick,
     migrate_minute_schedule,
+    wire_groups,
 )
 from petkit_local.http.server import create_app
+
+
+@pytest.fixture
+def utc_tz():
+    """Pins the host to UTC, so a D4's UTC meal times equal the local ones."""
+    old = os.environ.get("TZ")
+    os.environ["TZ"] = "UTC"
+    time.tzset()
+    yield
+    if old is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = old
+    time.tzset()
 
 
 @pytest.fixture
@@ -255,7 +270,7 @@ async def _get_d4_feed(client):
     return (await r.json())["result"]
 
 
-async def test_d4_meals_and_latest_carry_a_not_a1_a2():
+async def test_d4_meals_and_latest_carry_a_not_a1_a2(utc_tz):
     app, reg = _app("d4")
     d = reg.get(1)
     now = time.time()
@@ -299,3 +314,39 @@ async def test_d4sh_keeps_a1_a2():
     async with TestClient(TestServer(app)) as c:
         result = await _get_feed(c)
     assert result["schedule"][0]["it"][0] == {"id": "n_46560", "t": 46560, "a1": 1, "a2": 2}
+
+
+# --- D4: meal times in UTC ----------------------------------------------------
+# A D4 told `timezone: 1.0` dispensed a meal stored at 16:48 at 17:48 BST, i.e.
+# at 16:48 UTC: it runs meals on UTC seconds of day.
+
+def test_d4_meal_times_are_sent_in_utc():
+    groups = [{"re": "2,3", "it": [{"id": "n_60480", "t": 60480, "a1": 10, "a2": 0}]}]
+    wire = wire_groups(groups, "d4", utc_offset=3600)
+    assert wire == [{"re": "2,3", "it": [{"id": "n_56880", "t": 56880, "a": 10}],
+                     "itemJsonString": '[{"a":10,"id":"n_56880","t":56880}]'}]
+    # What was passed in, i.e. what is stored, stays local.
+    assert groups[0]["it"][0]["t"] == 60480
+
+
+def test_d4_meal_crossing_midnight_moves_to_the_neighbouring_weekday():
+    """00:30 local on Sunday (1) at UTC+1 is 23:30 UTC on Saturday (7); a
+    later meal in the same group stays on Sunday, so the group is split."""
+    groups = [{"re": "1,4", "it": [{"t": 1800, "a1": 5}, {"t": 43200, "a1": 7}]}]
+    wire = wire_groups(groups, "d4", utc_offset=3600, item_json=False)
+    assert wire == [
+        {"re": "3,7", "it": [{"id": "n_84600", "t": 84600, "a": 5}]},
+        {"re": "1,4", "it": [{"id": "n_39600", "t": 39600, "a": 7}]},
+    ]
+
+
+def test_d4_meal_crossing_midnight_westward_moves_forward():
+    groups = [{"re": "7", "it": [{"t": 84600, "a1": 5}]}]
+    wire = wire_groups(groups, "d4", utc_offset=-3600, item_json=False)
+    assert wire == [{"re": "1", "it": [{"id": "n_1800", "t": 1800, "a": 5}]}]
+
+
+def test_d4sh_meal_times_stay_local():
+    groups = [{"re": "5", "it": [{"id": "n_46560", "t": 46560, "a1": 1, "a2": 0}]}]
+    wire = wire_groups(groups, "d4sh", utc_offset=3600, item_json=False)
+    assert wire[0]["it"] == [{"id": "n_46560", "t": 46560, "a1": 1, "a2": 0}]

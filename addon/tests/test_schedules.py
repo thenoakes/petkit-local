@@ -9,6 +9,7 @@ times, told apart only by `type`, so an editor that rewrites its own section has
 to keep the other one.
 """
 import json
+import time
 
 import pytest
 
@@ -394,9 +395,11 @@ async def test_a_feeding_schedule_is_stored_and_pushed():
         await c.close()
 
 
-async def test_a_d4_schedule_is_pushed_with_its_amount_keyed_a():
+async def test_a_d4_schedule_is_pushed_with_its_amount_keyed_a(monkeypatch):
     """A D4 reads one amount, `a`; the property.set{feed} push is keyed the
     same way as its dev_feed_get, while what is stored keeps a1/a2."""
+    monkeypatch.setenv("TZ", "UTC")
+    time.tzset()
     app, reg, bridge = _panel("d4")
     c = await _client(app)
     try:
@@ -412,6 +415,8 @@ async def test_a_d4_schedule_is_pushed_with_its_amount_keyed_a():
         assert all("a1" not in e and e["a"] == 10 for e in wire["latest"])
     finally:
         await c.close()
+        monkeypatch.undo()
+        time.tzset()
 
 
 async def test_a_meal_id_is_regenerated_when_not_a_string():
