@@ -33,6 +33,7 @@ stored stays local.
 from __future__ import annotations
 
 import json
+import math
 import time
 
 from aiohttp import web
@@ -260,7 +261,9 @@ def wire_latest(latest: list[dict], device_type: str, now: float | None = None) 
         if not str(entry.get("id", "")).startswith("s_"):
             out.append(entry)
             continue
-        fire = time.gmtime(now + entry.get("t", 0))
+        # The countdown is floored (see `_build_latest`), so now + t lands up
+        # to a second early; ceil puts it back on the meal's own second.
+        fire = time.gmtime(math.ceil(now + entry.get("t", 0)))
         secs = fire.tm_hour * 3600 + fire.tm_min * 60 + fire.tm_sec
         out.append({**entry, "id": f"s_{time.strftime('%Y%m%d', fire)}_{secs}"})
     return out

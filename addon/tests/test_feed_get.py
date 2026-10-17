@@ -361,3 +361,7 @@ def test_d4_latest_ids_name_the_fire_time_in_utc():
     assert wire_latest(latest, "d4", now) == [
         {"id": "s_20261017_60480", "t": 300, "a": 10}]
     assert wire_latest(latest, "d4sh", now) == latest
+    # A floored countdown from a fractional now still names the meal's second.
+    # 0.6 s later the floored countdown reads 299; the id still names 60480.
+    later = [{"id": "s_20261017_64080", "t": 299, "a1": 10, "a2": 0}]
+    assert wire_latest(later, "d4", now + 0.6)[0]["id"] == "s_20261017_60480"
