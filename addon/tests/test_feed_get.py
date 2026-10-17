@@ -14,6 +14,7 @@ from petkit_local.http.handlers.feed import (
     _compute_next_tick,
     migrate_minute_schedule,
     wire_groups,
+    wire_latest,
 )
 from petkit_local.http.server import create_app
 
@@ -350,3 +351,13 @@ def test_d4sh_meal_times_stay_local():
     groups = [{"re": "5", "it": [{"id": "n_46560", "t": 46560, "a1": 1, "a2": 0}]}]
     wire = wire_groups(groups, "d4sh", utc_offset=3600, item_json=False)
     assert wire[0]["it"] == [{"id": "n_46560", "t": 46560, "a1": 1, "a2": 0}]
+
+
+def test_d4_latest_ids_name_the_fire_time_in_utc():
+    """A `latest` id carries the same UTC instant as the meal's converted
+    `t`; the countdown itself is relative and unchanged."""
+    now = 1792255680.0 - 300  # 5 minutes before 16:48:00 UTC, 2026-10-17
+    latest = [{"id": "s_20261017_64080", "t": 300, "a1": 10, "a2": 0}]
+    assert wire_latest(latest, "d4", now) == [
+        {"id": "s_20261017_60480", "t": 300, "a": 10}]
+    assert wire_latest(latest, "d4sh", now) == latest

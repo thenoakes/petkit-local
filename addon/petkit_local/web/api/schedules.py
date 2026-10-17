@@ -18,7 +18,7 @@ from petkit_local.devices import defaults
 from petkit_local.devices.base import encode_multi_range
 from petkit_local.ha.commands import PROPERTY_SET_SUFFIX, make_mqtt_property_set
 from petkit_local.http.handlers.feed import (
-    _build_latest, _compute_next_tick, wire_amounts, wire_groups,
+    _build_latest, _compute_next_tick, wire_groups, wire_latest,
 )
 from petkit_local.utils.coerce import to_int
 from petkit_local.web.api._common import _deliver, _device_or_404, _json_body
@@ -245,7 +245,7 @@ async def api_save_schedule(request: web.Request) -> web.Response:
             "schedule": wire_groups(feed.get("schedule", []), d.device_type,
                                     item_json=False),
             "nextTick": _compute_next_tick(latest),
-            "latest": wire_amounts(latest, d.device_type),
+            "latest": wire_latest(latest, d.device_type, now),
         }
         mqtt_cmd = make_mqtt_property_set(
             {"feed": json.dumps(wire, separators=(",", ":"))})

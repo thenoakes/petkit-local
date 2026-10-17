@@ -241,6 +241,31 @@ def wire_groups(groups: list[dict], device_type: str, *,
     return out
 
 
+def wire_latest(latest: list[dict], device_type: str, now: float | None = None) -> list[dict]:
+    """``latest[]`` for the wire: amounts through `wire_amounts`, and for a
+    feeder that runs meals on UTC, each id rebuilt as ``s_<UTC date>_<UTC
+    seconds>`` of its fire time, so it names the same instant as the meal's
+    converted ``t``. The countdown ``t`` is relative and needs no conversion.
+
+    The id is not decoration: the one D4 meal seen to fire was reported back
+    under its ``latest`` id, and that id's numbers matched the meal's ``t``.
+    """
+    entries = wire_amounts(latest, device_type)
+    if device_type.lower() not in DEVICE_TYPES_FEEDER_UTC_SCHEDULE:
+        return entries
+    if now is None:
+        now = time.time()
+    out = []
+    for entry in entries:
+        if not str(entry.get("id", "")).startswith("s_"):
+            out.append(entry)
+            continue
+        fire = time.gmtime(now + entry.get("t", 0))
+        secs = fire.tm_hour * 3600 + fire.tm_min * 60 + fire.tm_sec
+        out.append({**entry, "id": f"s_{time.strftime('%Y%m%d', fire)}_{secs}"})
+    return out
+
+
 async def handle_feed_get(request: web.Request) -> web.Response:
     """Return the device's stored feeding schedule with live countdowns.
 
@@ -280,7 +305,7 @@ async def handle_feed_get(request: web.Request) -> web.Response:
                 "schedule": wire_groups(feed.get("schedule") or [], device.device_type)
                 or [_EMPTY_GROUP],
                 "nextTick": next_tick,
-                "latest": wire_amounts(latest, device.device_type),
+                "latest": wire_latest(latest, device.device_type, now),
             }
         })
 
