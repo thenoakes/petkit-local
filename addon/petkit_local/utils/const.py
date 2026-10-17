@@ -68,6 +68,18 @@ DEVICE_TYPES_FEEDER_SINGLE_AMOUNT = {"d4"}
 # of day in `time` (60486 for a feed at 17:48:06 BST). Such a feeder is handed
 # its meal times converted to UTC (`http/handlers/feed.py::wire_groups`).
 DEVICE_TYPES_FEEDER_UTC_SCHEDULE = {"d4"}
+
+# Feeders whose state report spells hopper and battery the D4 way, which is
+# neither the cloud model's nor the D4SH's:
+#   `food`: -1 unknown, 0 empty, 1 ok, 2 low (Opcodeffm/petkit-local, from the
+#           PetKit app's D4HomeDeviceView; a live D4 here reported 0 with an
+#           empty hopper and 1 once it was filled);
+#   `batV`: battery millivolts, ~444 being the ADC floor with no batteries in
+#           (444 on a live D4 here, which has none), and `ubat` 1 while it is
+#           running on them.
+# `state_parsers._extract_feeder_d4` turns these into `foodLow` and
+# `batteryInstalled` for the D4's own Food Low / Battery Installed entities.
+DEVICE_TYPES_FEEDER_D4_STATE = {"d4"}
 DEVICE_TYPES_WATER_FOUNTAIN = {"w4", "w5", "ctw2", "ctw3", "w7h"}
 DEVICE_TYPES_PURIFIER = {"k2", "k3"}
 DEVICE_TYPES_ALL = DEVICE_TYPES_LITTER | DEVICE_TYPES_FEEDER | DEVICE_TYPES_WATER_FOUNTAIN | DEVICE_TYPES_PURIFIER

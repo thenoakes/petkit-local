@@ -251,7 +251,7 @@ _SHARED_HELPERS = (
     state_parsers._extract_camel, state_parsers._extract_litter_nested,
     state_parsers._extract_consumable_days, state_parsers._extract_shared,
     state_parsers._extract_presence_flags, state_parsers._extract_error_flags,
-    state_parsers._extract_fountain_w7h,
+    state_parsers._extract_fountain_w7h, state_parsers._extract_feeder_d4,
     state_parsers._extract_wifi_rssi, state_parsers._extract_work_mode,
     state_parsers._parse_content_field, state_parsers.normalize_property_params,
 )

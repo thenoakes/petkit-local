@@ -61,7 +61,12 @@ EXPECTED_ENTITY_COUNTS = {
     # t6 +6 on 2026-08-12: the bagging mechanism it reports in every
     # property post and nothing here read. No other litter box has it.
     "t3": 46, "t4": 46, "t5": 82, "t6": 89, "t7": 82,
-    "feeder": 25, "feedermini": 25, "d3": 25, "d4": 25, "d4s": 25,
+    "feeder": 25, "feedermini": 25, "d3": 25, "d4s": 25,
+    # d4 -9 on 2026-10-17: a live D4 (fw 1.255) fills none of the bowl,
+    # eating, surplus, feedState, desiccant or workState entities, so they are
+    # gated off (categories.py model_excludes); Food Low and Battery Installed
+    # keep their keys but read the D4's own fields.
+    "d4": 16,
     # 2026-08-12: replaced `enable_feed_video` button with individual switches
     # (feed_picture, eat_video, voice_prompt, voice_disturb_mode, disturb_mode)
     # and added selected_sound number + play_sound button. Net +6.
@@ -73,7 +78,10 @@ EXPECTED_ENTITY_COUNTS = {
 # (non-camera model, camera model) of the same category. The camera bundle must
 # be APPENDED to the shared base, never interleaved, or the two models disagree
 # about entity order for no reason.
-CAMERA_PAIRS = [("t4", "t5"), ("d4", "d4h"), ("w5", "w7h")]
+# The feeder pair is the D3, not the D4: the D4 swaps in its own Food Low and
+# Battery Installed (same keys, appended by its model_entities row), so its
+# order differs from the family's by design, as a W7H's does from a W5's.
+CAMERA_PAIRS = [("t4", "t5"), ("d3", "d4h"), ("w5", "w7h")]
 
 
 def test_all_components_are_valid_ha_platforms():

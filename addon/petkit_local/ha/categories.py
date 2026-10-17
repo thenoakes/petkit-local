@@ -41,7 +41,7 @@ from petkit_local.ha.entities.selects import (
     FEEDER_SELECTS, FOUNTAIN_SELECTS, FOUNTAIN_W7H_SELECTS, LITTER_SELECTS,
 )
 from petkit_local.ha.entities.sensors import (
-    FEEDER_BINARY_SENSORS, FEEDER_DUAL_HOPPER_SENSORS, FEEDER_NEXT_GEN_HALL_SENSORS,
+    FEEDER_BINARY_SENSORS, FEEDER_D4_BINARY_SENSORS, FEEDER_DUAL_HOPPER_SENSORS, FEEDER_NEXT_GEN_HALL_SENSORS,
     FEEDER_NEXT_GEN_SENSORS, FEEDER_SINGLE_HOPPER_SENSORS, FEEDER_SENSORS,
     FOUNTAIN_BINARY_SENSORS, FOUNTAIN_SENSORS,
     FOUNTAIN_W7H_BINARY_SENSORS, FOUNTAIN_W7H_HALL_SENSORS, FOUNTAIN_W7H_SENSORS,
@@ -239,6 +239,9 @@ CATEGORY_SPECS: dict[str, CategorySpec] = {
             ("d4sh", (*FEEDER_NEXT_GEN_SENSORS, *FEEDER_DUAL_HOPPER_SENSORS,
                       *FEEDER_NEXT_GEN_HALL_SENSORS,
                       *FEEDER_DUAL_BUTTONS, *FEEDER_DUAL_NUMBERS)),
+            # The D4's own Food Low / Battery Installed, replacing the family
+            # pair removed in its model_excludes row below.
+            ("d4", tuple(FEEDER_D4_BINARY_SENSORS)),
         ),
         # Four controls a D4SH cannot fill, and the reason is the same for each:
         # the field behind it is not in either of the two real reports in issue
@@ -270,6 +273,23 @@ CATEGORY_SPECS: dict[str, CategorySpec] = {
             # firmware-verified half of the split.
             ("d4h", frozenset({
                 "food_in_bowl", "food_bowl_pct", "battery_installed",
+            })),
+            # A live D4 (fw 1.255, issue #3) reports none of these. Its state
+            # report is `food`, `feeding`, `door`, `batV`/`DCV`/`ubat`, `ir`,
+            # `grat`, `err{}`, `wifi{}` and the free-form `other`, in every
+            # snapshot seen:
+            #   - no bowl scale and no eating sensor (no camera), so nothing
+            #     fills `weight`, `bowl` or `eating`, and `surplusControl` is
+            #     the camera feeders' bowl-leftover setting;
+            #   - no `feedState`, `desiccantLeftDays` or `workState`: those are
+            #     the cloud's account-side figures, never device telemetry.
+            # `food_low` and `battery_installed` are excluded only to be
+            # replaced, by the D4's model_entities row above.
+            ("d4", frozenset({
+                "food_in_bowl", "food_bowl_pct", "eating", "surplus_level",
+                "times_dispensed", "total_dispensed", "amount_eaten",
+                "desiccant_days", "device_status",
+                "food_low", "battery_installed",
             })),
         ),
     ),

@@ -235,6 +235,17 @@ FEEDER_BINARY_SENSORS = [
               value_path="state.batteryPower", icon="mdi:battery"),
 ]
 
+#: The D4's Food Low and Battery Installed: the same keys, so the same HA
+#: entities, read from what a D4 actually reports
+#: (`state_parsers._extract_feeder_d4`). `ha/categories.py` swaps them in for
+#: the family pair above.
+FEEDER_D4_BINARY_SENSORS = [
+    EntityDef(component="binary_sensor", key="food_low", name="Food Low",
+              value_path="state.foodLow", device_class="problem", icon="mdi:food-drumstick-off"),
+    EntityDef(component="binary_sensor", key="battery_installed", name="Battery Installed",
+              value_path="state.batteryInstalled", icon="mdi:battery"),
+]
+
 # --- D4H / D4SH (the embedded-Linux feeders) --------------------------------
 # Everything here is a key in the state builder of a real D4SH 867 `ctrl` and is
 # present in both of the real reports in issue #2. What each key MEANS is a

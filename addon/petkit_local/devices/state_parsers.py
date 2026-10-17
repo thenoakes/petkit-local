@@ -39,7 +39,7 @@ from petkit_local.devices.state_tables import (CONSUMABLE_RECORD_KEY, CONSUMABLE
                                                W7H_STATE_FIELDS, WORK_MODE_IDLE)
 from petkit_local.events import codes
 from petkit_local.utils.coerce import to_float
-from petkit_local.utils.const import DEVICE_TYPES_FEEDER_NEXT_GEN
+from petkit_local.utils.const import DEVICE_TYPES_FEEDER_D4_STATE, DEVICE_TYPES_FEEDER_NEXT_GEN
 from petkit_local.utils.dicts import dig
 
 #: The names this module answers to. The evidence tables live in
@@ -455,6 +455,34 @@ def _parse_litter_esp32(body: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+#: Above this many millivolts a D4 has batteries in. The floor with none is
+#: ~444 (the ADC reading of an empty holder); Opcodeffm/petkit-local uses the
+#: same 5000 cut-off for its own D4, where a set of fresh cells reads ~7000.
+D4_BATTERY_PRESENT_MV = 5000
+
+
+def _extract_feeder_d4(body: dict[str, Any], state: dict[str, Any],
+                       device_type: str) -> None:
+    """`foodLow` and `batteryInstalled` from a D4's own spellings.
+
+    The family entities read `food` as truthy-means-low and `batteryPower`,
+    which on a D4 shows "low" with a full hopper and never shows a battery.
+    See `const.DEVICE_TYPES_FEEDER_D4_STATE` for what the fields mean.
+    `food` of -1 (the sensor has no reading) leaves `foodLow` as it was rather
+    than inventing an answer.
+    """
+    if device_type.lower() not in DEVICE_TYPES_FEEDER_D4_STATE:
+        return
+    food = to_float(body.get("food"), None)
+    if food in (0, 2):
+        state["foodLow"] = 1
+    elif food == 1:
+        state["foodLow"] = 0
+    bat_v = to_float(body.get("batV"), None)
+    if bat_v is not None:
+        state["batteryInstalled"] = 1 if bat_v > D4_BATTERY_PRESENT_MV else 0
+
+
 def _parse_feeder(body: dict[str, Any], device_type: str = "") -> dict[str, Any]:
     """State for every feeder, camera or not.
 
@@ -487,6 +515,7 @@ def _parse_feeder(body: dict[str, Any], device_type: str = "") -> dict[str, Any]
     # a key left solely to the list above would reach a next-gen feeder over
     # HTTP and vanish on the transport it actually reports state on.
     _extract_feeder_next_gen(body, state, device_type)
+    _extract_feeder_d4(body, state, device_type)
     # The `err{}` fault block, on both transports. Parse it on one only and the
     # Error sensor reads whatever the last transport to arrive had to say --
     # exactly the asymmetry this module's docstring calls the standard bug.
