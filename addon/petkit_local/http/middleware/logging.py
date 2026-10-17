@@ -58,8 +58,8 @@ async def logging_middleware(request: web.Request, handler: Handler) -> web.Stre
     For those paths it: emits the one-line access log, records a detailed entry
     (headers, query, capped bodies) on the panel's event hub, appends to the
     capture file when `capture` is configured, and stamps `last_seen` on the
-    resolved device — firing the app's ``on_device_seen`` callback if that
-    request is what brought it back online.
+    resolved device — firing the app's ``on_device_seen`` callback on every
+    such contact, which re-asserts availability in HA when it has drifted.
     """
     # Pre-read the request body for POST/PUT so we can surface it in the panel
     # log. aiohttp caches the payload, so the handler still reads it normally.
@@ -127,9 +127,8 @@ async def logging_middleware(request: web.Request, handler: Handler) -> web.Stre
             wire_type = (request.get("x_device") or {}).get("type") or ""
             if wire_type and device.wire_type != wire_type:
                 device.wire_type = wire_type
-            if not device.online:
-                device.online = True
-                cb = request.app.get("on_device_seen")
-                if cb is not None:
-                    await cb(device)
+            device.online = True
+            cb = request.app.get("on_device_seen")
+            if cb is not None:
+                await cb(device)
     return resp

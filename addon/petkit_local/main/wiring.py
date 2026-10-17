@@ -151,10 +151,11 @@ async def _on_device_seen(ha_publisher: HAPublisher | None, device: Device) -> N
     """Reflect any HTTP contact from a device as availability in HA.
 
     Cheaper and far more frequent than a state report: a heartbeat alone
-    is enough to prove the device is alive.
+    is enough to prove the device is alive. Runs on every contact, and
+    `ensure_availability` makes the repeat ones free.
     """
     if ha_publisher:
-        await ha_publisher.publish_availability(device)
+        await ha_publisher.ensure_availability(device)
 
 
 def build_services(config: Config, args: argparse.Namespace) -> Services:

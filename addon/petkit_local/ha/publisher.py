@@ -112,6 +112,9 @@ class HAPublisher:
         self._client = None
         self._connected = False
         self._commands = CommandRouter(self, registry, ble_registry)
+        #: The availability payload HA last accepted from us, per device, so
+        #: `ensure_availability` can re-assert it on every contact for free.
+        self._availability_sent: dict[int, str] = {}
 
     @property
     def connected(self) -> bool:
@@ -165,6 +168,7 @@ class HAPublisher:
                 ) as client:
                     self._client = client
                     self._connected = True
+                    self._availability_sent.clear()
                     fails = 0
                     log.info("Connected to HA MQTT broker at %s:%d", self._host, self._port)
 
@@ -321,7 +325,22 @@ class HAPublisher:
 
         topic = f"petkit-local/{device.petkit_id}/availability"
         payload = "online" if device.online else "offline"
-        await self._emit(topic, payload, retain=True)
+        if await self._emit(topic, payload, retain=True):
+            self._availability_sent[device.petkit_id] = payload
+
+    async def ensure_availability(self, device: Device) -> None:
+        """Publish availability only if HA does not already have this value.
+
+        Called on every HTTP contact. Availability used to be published only
+        on the offline -> online transition, so a single lost publish left
+        every entity "unavailable" until the device's next state report or
+        event: seen after an add-on restart, where the replay on connect and
+        the first heartbeat crossed and HA kept "offline" while the device
+        heartbeated every 11 s.
+        """
+        payload = "online" if device.online else "offline"
+        if self._availability_sent.get(device.petkit_id) != payload:
+            await self.publish_availability(device)
 
     async def publish_event(self, device: Device, entity_suffix: str, event_type: str,
                             attrs: dict | None = None) -> None:
