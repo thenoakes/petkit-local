@@ -452,6 +452,17 @@ _FIELDS: dict[str, _FieldSpec] = {
     "src": _FieldSpec("Source", lambda v: _enum(_FEED_SRC, v, "source {n}")),
     "err_code": _FieldSpec(
         "Feed result", lambda v: _enum(_FEED_RESULT, v, "error {n}")),
+    "real_amount": _FieldSpec(
+        "Dispensed", _raw,
+        "The device's own count. Grams on a D4: a feed_realtime of amount 10 "
+        "reported 10 (Opcodeffm/petkit-local reads the D4's amount as grams); "
+        "not checked against a scale."),
+    "real_amount1": _FieldSpec(
+        "Dispensed, hopper 1", _raw,
+        "Portions on a D4SH, whose feed_realtime counts portions per hopper."),
+    "real_amount2": _FieldSpec(
+        "Dispensed, hopper 2", _raw,
+        "Portions on a D4SH, whose feed_realtime counts portions per hopper."),
     # -- surfaced but deliberately unexplained
     "ph_reason": _FieldSpec(
         "Urine pH", _raw,

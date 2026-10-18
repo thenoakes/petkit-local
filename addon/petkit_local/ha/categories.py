@@ -281,14 +281,16 @@ CATEGORY_SPECS: dict[str, CategorySpec] = {
             #   - no bowl scale and no eating sensor (no camera), so nothing
             #     fills `weight`, `bowl` or `eating`, and `surplusControl` is
             #     the camera feeders' bowl-leftover setting;
-            #   - no `feedState`, `desiccantLeftDays` or `workState`: those are
-            #     the cloud's account-side figures, never device telemetry.
+            #   - no `desiccantLeftDays`, `workState` or the eaten side of
+            #     `feedState`: the cloud's account-side figures, never device
+            #     telemetry. Times / Total Dispensed stay, because
+            #     `normalize.apply_derived_state` totals them per day from each
+            #     feed_over's `real_amount`.
             # `food_low` and `battery_installed` are excluded only to be
             # replaced, by the D4's model_entities row above.
             ("d4", frozenset({
                 "food_in_bowl", "food_bowl_pct", "eating", "surplus_level",
-                "times_dispensed", "total_dispensed", "amount_eaten",
-                "desiccant_days", "device_status",
+                "amount_eaten", "desiccant_days", "device_status",
                 "food_low", "battery_installed",
             })),
         ),

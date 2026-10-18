@@ -301,14 +301,32 @@ def parse_event_report_form(text: str) -> dict:
     for k, values in parsed.items():
         if not values:
             continue
-        v = values[0]
+        v = _unwrap_quoted_json(values[0])
         if v[:1] in ("{", "["):
             try:
                 v = json.loads(v)
             except (json.JSONDecodeError, TypeError):
+                # Left as text: `_as_dict` retries it with the bare-token
+                # repair, which is what a D4's unquoted meal id needs.
                 pass
         out[k] = v
     return out
+
+
+def _unwrap_quoted_json(value: str) -> str:
+    """Drop one pair of literal double quotes around a JSON object or array.
+
+    A D4 (fw 1.255) sends `content="{...}"` and `state="{...}"`, the quotes
+    being part of the value, so neither ever looked like JSON and both were
+    stored as empty: the feed's `real_amount`, `result` and `err_code` never
+    reached the timeline or HA. Its content also carries the meal id unquoted
+    (`"id":s_20261017_61500`), which `_as_dict` repairs once it gets the text.
+    Anything else is returned unchanged.
+    """
+    if len(value) >= 4 and value[0] == '"' and value[-1] == '"' \
+            and value[1] in "{[" and value[-2] in "}]":
+        return value[1:-1]
+    return value
 
 
 def from_event_report(device: Device, form: dict) -> dict:

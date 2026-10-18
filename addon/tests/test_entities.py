@@ -62,11 +62,11 @@ EXPECTED_ENTITY_COUNTS = {
     # property post and nothing here read. No other litter box has it.
     "t3": 46, "t4": 46, "t5": 82, "t6": 89, "t7": 82,
     "feeder": 25, "feedermini": 25, "d3": 25, "d4s": 25,
-    # d4 -9 on 2026-10-17: a live D4 (fw 1.255) fills none of the bowl,
-    # eating, surplus, feedState, desiccant or workState entities, so they are
-    # gated off (categories.py model_excludes); Food Low and Battery Installed
-    # keep their keys but read the D4's own fields.
-    "d4": 16,
+    # d4 -7 on 2026-10-17/18: a live D4 (fw 1.255) fills none of the bowl,
+    # eating, surplus, amount-eaten, desiccant or workState entities, so they
+    # are gated off (categories.py model_excludes); Food Low and Battery
+    # Installed keep their keys but read the D4's own fields.
+    "d4": 18,
     # 2026-08-12: replaced `enable_feed_video` button with individual switches
     # (feed_picture, eat_video, voice_prompt, voice_disturb_mode, disturb_mode)
     # and added selected_sound number + play_sound button. Net +6.

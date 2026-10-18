@@ -1096,9 +1096,13 @@ FEED_SRC: dict[int, str] = {
 #:  10  inferred — every capture carries surplus_standard=1, firmware reads a
 #:      config field before the branch (disasm 0x427be0), likely surplus control
 #:  11  unverified — observed on a live D4SH, not yet traced in disassembly
+#:   4  inferred — a live D4 (fw 1.255) with an empty hopper ran its motor for a
+#:      manual feed and reported real_amount 0, err_code 0, state food 0
+#:      (issue #3, single observation)
 FEED_RESULT: dict[int, str] = {
     0: "completed",
     3: "blocked (outlet obstructed)",
+    4: "nothing dispensed (hopper empty)",
     7: "failed (error 7)",
     8: "failed (nothing dispensed)",
     9: "skipped (hoppers empty)",

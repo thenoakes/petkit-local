@@ -37,9 +37,10 @@ def test_d4_publishes_its_own_food_low_and_no_unfillable_entities():
     assert entities["food_low"].value_path == "state.foodLow"
     assert entities["battery_installed"].value_path == "state.batteryInstalled"
     for gone in ("food_in_bowl", "food_bowl_pct", "eating", "surplus_level",
-                 "times_dispensed", "total_dispensed", "amount_eaten",
-                 "desiccant_days", "device_status"):
+                 "amount_eaten", "desiccant_days", "device_status"):
         assert gone not in entities, gone
+    # Totalled locally from each feed_over's real_amount, so they stay.
+    assert "times_dispensed" in entities and "total_dispensed" in entities
     # A D3 keeps the family's.
     d3 = {e.key: e for e in get_entities_for_device(Device(device_type="d3", petkit_id=1))}
     assert d3["food_low"].value_path == "state.food"
@@ -62,3 +63,26 @@ def test_event_entities_carry_no_value_template():
                                       "petkit-local/1/state")
     assert "value_template" not in payload
     assert "feed_over" in payload["event_types"]
+
+
+def test_a_d4_feed_report_decodes_despite_quoting_and_a_bare_id():
+    """A D4 wraps content/state in literal quotes and leaves the meal id
+    unquoted; both used to make the whole content decode as empty."""
+    from petkit_local.events.ingest import parse_event_report_form
+    from petkit_local.events.normalize import _as_dict
+    body = ('event_type=4&event_id=414647898_1792256702&timestamp=1792256707'
+            '&content="{"start_time":1792256702,"id":s_20261017_61500,'
+            '"day":20261017,"manual":0,"time":61506,"real_amount":10,'
+            '"online_state":1,"completed_at":1792256707,"result":0,"err_code":0}"'
+            '&state="{"err":{"DC":0},"DCV":5101,"feeding":0}"')
+    form = parse_event_report_form(body)
+    content = _as_dict(form["content"])
+    assert content["real_amount"] == 10 and content["id"] == "s_20261017_61500"
+    assert content["result"] == 0
+    assert _as_dict(form["state"]) == {"err": {"DC": 0}, "DCV": 5101, "feeding": 0}
+
+
+def test_an_ordinary_form_value_is_left_alone():
+    from petkit_local.events.ingest import parse_event_report_form
+    form = parse_event_report_form('event_type=3&content={"id":"x"}&note="hi"')
+    assert form["content"] == {"id": "x"} and form["note"] == '"hi"'
