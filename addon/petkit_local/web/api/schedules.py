@@ -22,6 +22,7 @@ from petkit_local.http.handlers.feed import (
 )
 from petkit_local.utils.coerce import to_int
 from petkit_local.web.api._common import _deliver, _device_or_404, _json_body
+from petkit_local.web.appkeys import HA_PUBLISHER
 
 
 #: Minutes in a day. A schedule range runs 0..1440 inclusive — 1440 is the end
@@ -239,6 +240,7 @@ async def api_save_schedule(request: web.Request) -> web.Response:
         d.config["feed_schedule"] = feed
         reg.save()
         _push_feed_get(d, hub, bridge, feed)
+        await _republish_state(request, d)
         now = time.time()
         latest = _build_latest(feed, now)
         wire = {
@@ -301,6 +303,7 @@ async def api_deferred_feed(request: web.Request) -> web.Response:
         feed["deferred"] = [d2 for d2 in deferred if d2.get("id") != feed_id]
         reg.save()
         _push_feed_get(d, hub, bridge, feed)
+        await _republish_state(request, d)
         return web.json_response({"ok": True})
 
     body = await _json_body(request)
@@ -328,7 +331,17 @@ async def api_deferred_feed(request: web.Request) -> web.Response:
     reg.save()
 
     _push_feed_get(d, hub, bridge, feed)
+    await _republish_state(request, d)
     return web.json_response({"ok": True, "feed": entry})
+
+
+async def _republish_state(request: web.Request, d) -> None:
+    """Show HA the schedule just saved here. Without it the Feeding Schedule
+    `text` entity kept the old value until the device's next report, which on
+    a quiet feeder can be a day."""
+    publisher = request.app.get(HA_PUBLISHER)
+    if publisher is not None:
+        await publisher.publish_state(d)
 
 
 def _push_feed_get(d, hub, bridge, feed):

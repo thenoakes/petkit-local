@@ -284,7 +284,17 @@ def _value_template(entity: EntityDef) -> str:
 
     parts = entity.value_path.split(".")
     accessor = "value_json"
-    for p in parts:
+    for i, p in enumerate(parts):
+        # Every level below the top one is defaulted to an empty dict: the
+        # final `| default(...)` below only covers the LAST lookup, so a
+        # missing intermediate (`state.feedState` before a feeder's first feed
+        # of the day, or after a restart) failed one step earlier and HA
+        # logged "Template variable error: 'dict object' has no attribute
+        # 'feedState'" on every publish. The top-level keys (`state`,
+        # `settings`, ...) are always in the published document
+        # (`publisher._build_state`), so a two-level path is left as it was.
+        if i >= 2:
+            accessor = f"({accessor} | default({{}}))"
         accessor += f".{p}" if p.isidentifier() else f"['{p}']"
 
     # `| default(...)` matters: a key the device hasn't reported yet is Jinja

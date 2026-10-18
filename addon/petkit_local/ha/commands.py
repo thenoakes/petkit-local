@@ -554,6 +554,13 @@ def handle_ha_command(device: Device, entity: EntityDef, payload: str) -> Comman
         except (json.JSONDecodeError, TypeError):
             log.warning("text '%s' payload is not valid JSON - storing raw", entity.key)
             parsed = payload
+        if key == "feed_schedule" and isinstance(parsed, dict) and "deferred" not in parsed:
+            # The entity shows meals only (`publisher._compact_feed_schedule`),
+            # so a write back from it never carries the one-off feeds; keep
+            # the stored ones rather than wiping them.
+            stored = device.config.get("feed_schedule")
+            if isinstance(stored, dict) and stored.get("deferred"):
+                parsed["deferred"] = stored["deferred"]
         device.config[key] = parsed
         log.info("Set config[%s] for device %d", key, device.petkit_id)
         if key == "feed_schedule" and isinstance(parsed, dict):

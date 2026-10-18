@@ -36,6 +36,7 @@ from petkit_local.ha.entities.pet import PET_SENSORS
 from petkit_local.ha.discovery import build_discovery_payload, discovery_topic
 from petkit_local.devices.state_parsers import apply_consumable_state
 from petkit_local.ha.commands import LOCAL_DEFAULTS
+from petkit_local.utils.const import DEVICE_TYPES_FEEDER_DUAL
 from petkit_local.utils.jsonio import read_bytes
 
 if TYPE_CHECKING:
@@ -64,6 +65,37 @@ def device_is_stale(device: Device, now: float, timeout: int) -> bool:
     if last_seen <= 0:
         return False
     return (now - last_seen) > timeout
+
+
+def _compact_feed_schedule(device: Device) -> str:
+    """The feeding schedule as the `text` entity shows it: meals only.
+
+    HA caps a `text` entity at 255 characters and falls back to unknown past
+    it. The stored schedule carries every meal twice (`it` and its string copy
+    `itemJsonString`) plus bookkeeping (`v`, `deferred`), so three meals came
+    to 394 characters. Published here are the day groups and each meal's `id`,
+    `t` and `a1` — `a2` too on a dual-hopper feeder, or wherever it is not 0.
+    A write back through the entity (`ha/commands.py`) keeps the stored
+    `deferred` feeds, and `itemJsonString` is rebuilt whenever it is served.
+    """
+    feed = device.config.get("feed_schedule") or {}
+    if not isinstance(feed, dict):
+        return json.dumps(feed, separators=(",", ":"))
+    dual = device.device_type.lower() in DEVICE_TYPES_FEEDER_DUAL
+    groups = []
+    for group in feed.get("schedule") or []:
+        if not isinstance(group, dict):
+            continue
+        meals = []
+        for meal in group.get("it") or []:
+            if not isinstance(meal, dict):
+                continue
+            m = {k: meal[k] for k in ("id", "t", "a1") if k in meal}
+            if dual or meal.get("a2"):
+                m["a2"] = meal.get("a2", 0)
+            meals.append(m)
+        groups.append({"re": group.get("re", ""), "it": meals})
+    return json.dumps({"schedule": groups}, separators=(",", ":"))
 
 
 class HAPublisher:
@@ -568,7 +600,7 @@ class HAPublisher:
             "state": state,
             "settings": settings,
             "schedule": json.dumps(device.config.get("schedule", [])),
-            "feed_schedule": json.dumps(device.config.get("feed_schedule", {})),
+            "feed_schedule": _compact_feed_schedule(device),
             "capabilities": {ct: (ct in enabled) for ct in Device.CAPABILITY_TYPES},
             "local": {**LOCAL_DEFAULTS, **(device.config.get("local") or {})},
         }
