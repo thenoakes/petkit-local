@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from petkit_local.utils.const import DEVICE_TYPES_FEEDER_DUAL
+from petkit_local.utils.const import DEVICE_TYPES_FEEDER_DUAL, DEVICE_TYPES_FEEDER_SINGLE_AMOUNT
 
 if TYPE_CHECKING:  # `devices.ble` imports `devices.registry`, which imports `devices.base`.
     from petkit_local.devices.base import Device
@@ -312,5 +312,9 @@ def schedule_targets(device: Device) -> list[dict[str, Any]]:
             # Decided here rather than in the browser, next to the set that
             # already answers this question for `feed_realtime`.
             "dual": device.device_type in DEVICE_TYPES_FEEDER_DUAL,
+            # A D4 reads a meal's amount as grams and dispenses in 10 g
+            # portions: 5 g is zero portions and the meal is skipped
+            # (`codes.FEED_RESULT` 4). The editor labels it and steps by 10.
+            "grams": device.device_type in DEVICE_TYPES_FEEDER_SINGLE_AMOUNT,
         })
     return targets

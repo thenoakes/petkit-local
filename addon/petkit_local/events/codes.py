@@ -1096,13 +1096,17 @@ FEED_SRC: dict[int, str] = {
 #:  10  inferred — every capture carries surplus_standard=1, firmware reads a
 #:      config field before the branch (disasm 0x427be0), likely surplus control
 #:  11  unverified — observed on a live D4SH, not yet traced in disassembly
-#:   4  inferred — a live D4 (fw 1.255) with an empty hopper ran its motor for a
-#:      manual feed and reported real_amount 0, err_code 0, state food 0
-#:      (issue #3, single observation)
+#:   4  inferred — nothing dispensed, with no fault. Seen on a live D4 (fw
+#:      1.255, issue #3) two ways: a manual feed from an empty hopper (motor
+#:      ran ~9 s, state food 0), and scheduled meals of 5 g with food in the
+#:      hopper, where the motor never ran (start_time == completed_at) while a
+#:      10 g manual feed minutes later dispensed 10. The D4 is handed a portion
+#:      factor of 10 (localkit, Opcodeffm), so 5 g is zero portions. NOT "hopper
+#:      empty" on its own.
 FEED_RESULT: dict[int, str] = {
     0: "completed",
     3: "blocked (outlet obstructed)",
-    4: "nothing dispensed (hopper empty)",
+    4: "nothing dispensed (zero portions, or hopper empty)",
     7: "failed (error 7)",
     8: "failed (nothing dispensed)",
     9: "skipped (hoppers empty)",

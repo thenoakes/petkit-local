@@ -86,3 +86,22 @@ def test_an_ordinary_form_value_is_left_alone():
     from petkit_local.events.ingest import parse_event_report_form
     form = parse_event_report_form('event_type=3&content={"id":"x"}&note="hi"')
     assert form["content"] == {"id": "x"} and form["note"] == '"hi"'
+
+
+def test_a_feeder_result_is_decoded_as_a_feed_outcome():
+    """`result` 4 on a D4 is "nothing dispensed", not the litter table's
+    "stopped (bin full)"; a litter box keeps its own vocabulary."""
+    from petkit_local.events.decode import decode_content
+    content = {"result": 4, "real_amount": 0}
+    feeder = {f.key: f.text for f in decode_content("4", content, "d4")}
+    assert feeder["result"] == "nothing dispensed (zero portions, or hopper empty)"
+    litter = {f.key: f.text for f in decode_content("5", {"result": 4}, "t4")}
+    assert litter["result"] != feeder["result"]
+
+
+def test_only_a_d4_edits_its_meals_in_grams():
+    from petkit_local.devices import defaults
+    for device_type, expected in (("d4", True), ("d4sh", False), ("d4h", False)):
+        device = Device(device_type=device_type, petkit_id=1, serial_number="SN")
+        target = next(t for t in defaults.schedule_targets(device) if t["kind"] == "feed")
+        assert target["grams"] is expected, device_type

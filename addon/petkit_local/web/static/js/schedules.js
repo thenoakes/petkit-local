@@ -192,8 +192,8 @@ function renderFeedEditor(id, t, value) {
                 (meal, mi) => `<div class="sched-row">
         <span class="sched-vals">
           <input type="time" value="${esc(secToClock(meal.t))}" data-change="sched-meal-time"${dat} data-path="${esc(gi)}" data-idx="${esc(mi)}">
-          <label class="sw-inline"><span>${t.dual ? 'Hopper 1' : 'Portions'}</span>
-            <input type="number" class="sched-portion" min="0" max="255" step="1" value="${esc(meal.a1 ?? 0)}" data-change="sched-meal-a1"${dat} data-path="${esc(gi)}" data-idx="${esc(mi)}"></label>
+          <label class="sw-inline"><span>${t.dual ? 'Hopper 1' : t.grams ? 'Grams' : 'Portions'}</span>
+            <input type="number" class="sched-portion" min="0" max="255" step="${t.grams ? 10 : 1}" value="${esc(meal.a1 ?? 0)}" data-change="sched-meal-a1"${dat} data-path="${esc(gi)}" data-idx="${esc(mi)}"></label>
           ${
             t.dual
               ? `<label class="sw-inline"><span>Hopper 2</span>
@@ -209,7 +209,7 @@ function renderFeedEditor(id, t, value) {
               .join('')
           : '<p class="sub">No meals on these days.</p>'
       }
-      <button class="link"${dat} data-path="${esc(gi)}" data-action="sched-add-meal">+ Add meal</button>
+      <button class="link"${dat} data-path="${esc(gi)}"${t.grams ? ' data-grams="1"' : ''} data-action="sched-add-meal">+ Add meal</button>
     </div>`,
     )
     .join('')}
@@ -452,7 +452,8 @@ onAction('sched-add-meal', el =>
         (max, g) => (g.it || []).reduce((m, meal) => Math.max(m, Number(meal.id) || 0), max),
         0,
       ) + 1;
-    group.it.push({ id: next, t: 0, a1: 1, a2: 0 });
+    // A D4 dispenses in 10 g portions, so its first meal is one portion.
+    group.it.push({ id: next, t: 0, a1: el.dataset.grams ? 10 : 1, a2: 0 });
   }),
 );
 onAction('sched-drop-meal', el =>

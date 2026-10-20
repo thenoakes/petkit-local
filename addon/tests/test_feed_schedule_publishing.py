@@ -2,6 +2,7 @@
 the nested-path templates that read feedState, and the republish after a
 panel save. All prompted by a live D4 (issue #3)."""
 import json
+import time
 
 from aiohttp.test_utils import TestClient, TestServer
 
@@ -51,8 +52,10 @@ def test_a_dual_hopper_keeps_its_second_amount():
 
 
 def test_writing_the_text_back_keeps_the_stored_one_off_feeds():
+    # A day ahead: an expired one-off feed is pruned whenever the schedule is
+    # served, which is a different behaviour from the one under test.
     stored = dict(THREE_MEALS, deferred=[{"id": "d_20261019_43200", "a1": 5, "a2": 0,
-                                          "fire_at": 1792400000}])
+                                          "fire_at": time.time() + 86400}])
     d = _d4(stored)
     entity = next(e for e in get_entities_for_device(d) if e.key == "feeding_schedule")
     handle_ha_command(d, entity, _compact_feed_schedule(d))

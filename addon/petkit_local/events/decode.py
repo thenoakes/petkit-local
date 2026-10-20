@@ -32,6 +32,7 @@ from typing import Any, Callable
 
 from petkit_local.events import codes
 from petkit_local.utils.coerce import to_float, to_int
+from petkit_local.utils.const import DEVICE_TYPES_FEEDER
 
 # --- value tables ----------------------------------------------------------
 
@@ -515,6 +516,12 @@ _FIELD_ORDER: tuple[str, ...] = (
 #: loop so adding the next such field is one line, in the obvious place.
 _DEVICE_AWARE: dict[str, Any] = {
     "action": lambda v, dt: _enum(codes.work_modes_for(dt), v, "mode {n}"),
+    # A feeder's `result` is the feed outcome (`codes.FEED_RESULT`), not a
+    # cleaning cycle's: read from `RESULT`, a D4's "nothing dispensed" (4)
+    # rendered as "stopped (bin full)".
+    "result": lambda v, dt: (
+        _enum(codes.FEED_RESULT, v, "result {n}")
+        if (dt or "").lower() in DEVICE_TYPES_FEEDER else _result_field(v)),
 }
 
 
